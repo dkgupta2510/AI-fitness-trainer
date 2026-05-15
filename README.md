@@ -1,3 +1,4 @@
+[WhatsApp Image 2026-01-14 at 01.17.54 (1).pdf](https://github.com/user-attachments/files/27804413/WhatsApp.Image.2026-01-14.at.01.17.54.1.pdf)
 # AI Fitness Trainer
 
 Real-time pose detection, exercise tracking, video analysis, and AI-powered diet planning.
