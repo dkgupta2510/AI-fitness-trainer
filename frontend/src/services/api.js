@@ -13,7 +13,8 @@ export const api = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
 
-  generateDiet: (data) => axios.post(`${API_URL}/diet/generate`, data),
+  generateDiet: (data) =>
+    axios.post(`${API_URL}/diet/generate`, data, { timeout: 90000 }),
 
   saveWorkout: (data) => axios.post(`${API_URL}/workouts`, data),
   getWorkouts: (userId) => axios.get(`${API_URL}/workouts/${userId}`),

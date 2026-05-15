@@ -222,7 +222,7 @@ def upload_video():
 @app.route('/api/diet/generate', methods=['POST'])
 def generate_diet():
     try:
-        data = request.json
+        data = request.get_json(silent=True) or {}
         plan = diet_planner.generate_diet_plan(data)
 
         if 'error' in plan:
