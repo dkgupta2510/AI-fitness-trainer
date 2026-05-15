@@ -36,6 +36,9 @@ Copy from `backend/.env.example` if needed. Do not commit `.env` to GitHub.
 
 
 
+# AI Fitness Trainer – Project Architecture
+
+```text
 ai-fitness-trainer/
 │
 ├── frontend/
@@ -86,7 +89,7 @@ ai-fitness-trainer/
 │
 ├── README.md                          # Project documentation
 └── .gitignore                         # Git ignored files
-
+```
 ## Features
 
 - Live camera pose detection (Squats, Bicep Curls, Lateral Raises)
@@ -95,14 +98,15 @@ ai-fitness-trainer/
 - AI diet planner (Vegan/Veg/Non-Veg/Eggitarian)
 
 
+ODE QUALITY METRICS
 
-CODE QUALITY METRICS (1 minute)
-Here are the numbers that prove code quality:
+Here are the metrics that demonstrate the quality and maintainability of the project codebase.
 
-Metric	Target	Actual	Status
-Test Coverage	> 80%	87%	✅
-Code Duplication	< 5%	2.3%	✅
-Type Hint Coverage	100%	100%	✅
-Documentation	> 70%	92%	✅
-Average Cyclomatic Complexity	< 5	3.2	✅
-Security Vulnerabilities	0	0	✅
+| Metric                        | Target | Actual | Status |
+|--------------------------------|--------|--------|--------|
+| Test Coverage                 | > 80% | 87% | ✅ |
+| Code Duplication              | < 5% | 2.3% | ✅ |
+| Type Hint Coverage            | 100% | 100% | ✅ |
+| Documentation Coverage        | > 70% | 92% | ✅ |
+| Average Cyclomatic Complexity | < 5 | 3.2 | ✅ |
+| Security Vulnerabilities      | 0 | 0 | ✅ |
