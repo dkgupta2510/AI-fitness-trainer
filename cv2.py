@@ -19,7 +19,7 @@ warnings.filterwarnings('ignore')
 
 # =============================================================================
 # GLOBAL VARIABLES AND INITIALIZATIONS
-# =============================================================================
+# =============================================================================   
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 EXERCISES = {
