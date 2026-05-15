@@ -1,8 +1,3 @@
-.mirror-video video,
-.mirror-video img {
-  transform: scaleX(-1);
-}
-
 .App {
   text-align: center;
 }

@@ -8,7 +8,7 @@ const FRAME_INTERVAL_MS = 120;
 const INITIAL_STATS = {
   reps: 0,
   form: 'Ready',
-  feedback: 'Press Start to begin live tracking',
+  feedback: 'Allow camera access when prompted',
   knee_angle: 0,
   arm_angle: 0,
   shoulder_angle: 0,
@@ -33,6 +33,8 @@ const LiveCamera = ({ exerciseType }) => {
   const [isActive, setIsActive] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
 
   const applyResetStats = useCallback((nextStats) => {
     setStats({ ...INITIAL_STATS, ...nextStats });
@@ -67,6 +69,28 @@ const LiveCamera = ({ exerciseType }) => {
     }
   }, [exerciseType, applyResetStats]);
 
+  const handleCameraReady = useCallback(() => {
+    setCameraReady(true);
+    setCameraError(null);
+    setStats((s) => ({
+      ...s,
+      feedback: isActive ? s.feedback : 'Camera on — press Start live tracking',
+    }));
+  }, [isActive]);
+
+  const handleCameraError = useCallback((error) => {
+    console.error('Camera error:', error);
+    const message =
+      error?.name === 'NotAllowedError'
+        ? 'Camera blocked. Click the lock icon in the address bar and allow Camera, then refresh.'
+        : error?.name === 'NotFoundError'
+          ? 'No camera found. Connect a webcam or enable it in Windows Settings.'
+          : `Camera error: ${error?.message || 'Could not access camera'}`;
+    setCameraError(message);
+    setCameraReady(false);
+    setStats((s) => ({ ...s, feedback: message }));
+  }, []);
+
   useEffect(() => {
     const socket = io(API_BASE, {
       reconnection: true,
@@ -75,11 +99,7 @@ const LiveCamera = ({ exerciseType }) => {
     });
     socketRef.current = socket;
 
-    socket.on('connect', () => {
-      setConnected(true);
-      console.log('Live tracking connected');
-    });
-
+    socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => {
       setConnected(false);
       frameBusyRef.current = false;
@@ -110,17 +130,13 @@ const LiveCamera = ({ exerciseType }) => {
   useEffect(() => {
     if (isFirstExerciseRef.current) {
       isFirstExerciseRef.current = false;
-      setStats({
-        ...INITIAL_STATS,
-        feedback: 'Press Start to begin live tracking',
-      });
       return;
     }
     resetExercise();
   }, [exerciseType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!isActive || resetting || !connected) return undefined;
+    if (!isActive || resetting || !connected || !cameraReady) return undefined;
 
     const sendFrame = () => {
       const now = Date.now();
@@ -133,11 +149,7 @@ const LiveCamera = ({ exerciseType }) => {
         return;
       }
 
-      const imageSrc = webcamRef.current.getScreenshot({
-        width: 640,
-        height: 480,
-      });
-
+      const imageSrc = webcamRef.current.getScreenshot();
       if (!imageSrc) return;
 
       frameBusyRef.current = true;
@@ -150,9 +162,17 @@ const LiveCamera = ({ exerciseType }) => {
 
     const interval = setInterval(sendFrame, 50);
     return () => clearInterval(interval);
-  }, [isActive, exerciseType, resetting, connected]);
+  }, [isActive, exerciseType, resetting, connected, cameraReady]);
 
   const handleStartStop = () => {
+    if (!cameraReady) {
+      setStats((s) => ({
+        ...s,
+        feedback: cameraError || 'Waiting for camera — allow access in the browser',
+      }));
+      return;
+    }
+
     if (isActive) {
       setIsActive(false);
       setProcessedImage(null);
@@ -161,7 +181,7 @@ const LiveCamera = ({ exerciseType }) => {
       if (!connected) {
         setStats((s) => ({
           ...s,
-          feedback: 'Waiting for server… Run: python app.py in backend folder',
+          feedback: 'Backend offline — run: python app.py in the backend folder',
         }));
         return;
       }
@@ -181,10 +201,8 @@ const LiveCamera = ({ exerciseType }) => {
           ? 'text-cyan-400'
           : 'text-red-400';
 
-  const angle =
-    stats.knee_angle || stats.arm_angle || stats.shoulder_angle || 0;
-
-  const showProcessed = isActive && processedImage;
+  const angle = stats.knee_angle || stats.arm_angle || stats.shoulder_angle || 0;
+  const showSkeletonOverlay = isActive && processedImage;
 
   return (
     <div className="bg-gray-900 rounded-2xl shadow-2xl p-6">
@@ -193,13 +211,29 @@ const LiveCamera = ({ exerciseType }) => {
           <h2 className="text-xl font-bold text-white">Live Workout</h2>
           <p className="text-sm text-gray-400 mt-1">{EXERCISE_HINTS[exerciseType]}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
+              cameraReady ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-300'
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                cameraReady ? 'bg-green-400' : 'bg-gray-400'
+              }`}
+            />
+            {cameraReady ? 'Camera on' : 'Camera starting…'}
+          </span>
           <span
             className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
               connected ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'
             }`}
           >
-            <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+            <span
+              className={`w-2 h-2 rounded-full ${
+                connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+              }`}
+            />
             {connected ? 'Server connected' : 'Server offline'}
           </span>
           {isActive && (
@@ -212,64 +246,92 @@ const LiveCamera = ({ exerciseType }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <div className="relative bg-black rounded-xl overflow-hidden aspect-video mirror-video">
+          <div
+            className="relative bg-black rounded-xl overflow-hidden w-full"
+            style={{ minHeight: '360px', aspectRatio: '16 / 9' }}
+          >
+            {/* Live camera — always mounted and visible */}
             <Webcam
               ref={webcamRef}
               audio={false}
+              mirrored
               screenshotFormat="image/jpeg"
-              screenshotQuality={0.75}
-              className={`w-full h-full object-cover ${showProcessed ? 'invisible absolute inset-0' : ''}`}
-              videoConstraints={{
-                width: { ideal: 640 },
-                height: { ideal: 480 },
-                facingMode: 'user',
-              }}
+              screenshotQuality={0.8}
+              onUserMedia={handleCameraReady}
+              onUserMediaError={handleCameraError}
+              className="absolute inset-0 w-full h-full object-cover z-0"
+              videoConstraints={{ facingMode: 'user' }}
             />
-            {showProcessed && (
+
+            {/* Skeleton overlay when tracking */}
+            {showSkeletonOverlay && (
               <img
                 src={processedImage}
-                alt="Live pose tracking"
-                className="absolute inset-0 w-full h-full object-cover"
+                alt="Pose tracking overlay"
+                className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none"
               />
             )}
 
-            {!isActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-center p-6">
-                <p className="text-4xl mb-3">📹</p>
-                <p className="text-lg font-semibold text-white">Camera ready</p>
-                <p className="text-sm text-gray-300 mt-2 max-w-md">
-                  Click <strong>Start Live Tracking</strong> to see your skeleton, rep count, and form feedback in real time.
-                </p>
+            {/* Loading camera */}
+            {!cameraReady && !cameraError && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gray-900">
+                <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-3" />
+                <p className="text-white font-medium">Starting camera…</p>
+                <p className="text-gray-400 text-sm mt-1">Allow camera access if prompted</p>
               </div>
             )}
 
-            {isActive && (
-              <div className="absolute top-3 left-3 right-3 flex justify-between pointer-events-none">
-                <div className="bg-black/75 backdrop-blur px-4 py-2 rounded-lg">
-                  <span className="text-xs text-gray-400 uppercase">Reps</span>
-                  <p className="text-3xl font-bold text-green-400">{stats.reps}</p>
-                </div>
-                <div className={`bg-black/75 backdrop-blur px-4 py-2 rounded-lg ${formColor}`}>
-                  <span className="text-xs text-gray-400 uppercase">Form</span>
-                  <p className="text-lg font-bold">{stats.form}</p>
-                </div>
+            {/* Camera error */}
+            {cameraError && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gray-900 p-6 text-center">
+                <p className="text-4xl mb-3">📷</p>
+                <p className="text-red-300 font-semibold mb-2">Camera not available</p>
+                <p className="text-gray-300 text-sm max-w-md">{cameraError}</p>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-medium"
+                >
+                  Retry
+                </button>
               </div>
             )}
 
-            {isActive && stats.feedback && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 pt-12">
-                <p className="text-xl md:text-2xl font-bold text-white text-center drop-shadow-lg">
-                  {stats.feedback}
-                </p>
-              </div>
+            {/* HUD when tracking */}
+            {isActive && cameraReady && (
+              <>
+                <div className="absolute top-3 left-3 right-3 flex justify-between pointer-events-none z-20">
+                  <div className="bg-black/75 backdrop-blur px-4 py-2 rounded-lg">
+                    <span className="text-xs text-gray-400 uppercase">Reps</span>
+                    <p className="text-3xl font-bold text-green-400">{stats.reps}</p>
+                  </div>
+                  <div className={`bg-black/75 backdrop-blur px-4 py-2 rounded-lg ${formColor}`}>
+                    <span className="text-xs text-gray-400 uppercase">Form</span>
+                    <p className="text-lg font-bold">{stats.form}</p>
+                  </div>
+                </div>
+                {stats.feedback && (
+                  <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/90 to-transparent p-4 pt-10 pointer-events-none">
+                    <p className="text-lg md:text-xl font-bold text-white text-center">
+                      {stats.feedback}
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
+
+          {!isActive && cameraReady && (
+            <p className="mt-3 text-center text-gray-300 text-sm">
+              Your camera is live above. Press <strong className="text-white">Start live tracking</strong> for pose detection and rep counting.
+            </p>
+          )}
 
           <div className="flex gap-3 mt-4">
             <button
               type="button"
               onClick={handleStartStop}
-              disabled={resetting}
+              disabled={resetting || !cameraReady}
               className={`flex-1 py-3 rounded-lg font-bold transition disabled:opacity-50 ${
                 isActive ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
               } text-white`}
@@ -310,8 +372,7 @@ const LiveCamera = ({ exerciseType }) => {
 
           {!connected && (
             <div className="bg-amber-900/80 border border-amber-600 rounded-xl p-4 text-amber-100 text-sm">
-              <p className="font-bold mb-1">Backend required</p>
-              <p>In a terminal run:</p>
+              <p className="font-bold mb-1">Backend required for tracking</p>
               <code className="block mt-2 bg-black/40 p-2 rounded text-xs">
                 cd backend → venv\Scripts\activate → python app.py
               </code>
