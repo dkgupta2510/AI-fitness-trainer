@@ -1,20 +1,7 @@
-from anthropic import Anthropic
-import os
+from .llm_client import chat
 
 
 class FormAdvisor:
-    def __init__(self):
-        self._client = None
-
-    @property
-    def client(self):
-        if self._client is None:
-            api_key = os.getenv('ANTHROPIC_API_KEY')
-            if not api_key or api_key == 'your_anthropic_api_key_here':
-                raise ValueError('Set ANTHROPIC_API_KEY in backend/.env')
-            self._client = Anthropic(api_key=api_key)
-        return self._client
-
     def analyze_video_form(self, exercise_type, stats):
         total_reps = stats.get('total_reps', 0)
         correct_reps = stats.get('correct_reps', 0)
@@ -49,11 +36,6 @@ Provide professional feedback in this format:
 Keep it encouraging, specific, and actionable. Maximum 250 words."""
 
         try:
-            message = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=500,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return message.content[0].text
+            return chat(prompt, max_tokens=500)
         except Exception as e:
             return f"Error generating feedback: {str(e)}"

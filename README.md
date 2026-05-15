@@ -25,11 +25,14 @@ Opens at http://localhost:3000
 
 ## Configuration
 
-Edit `backend/.env` and set your Anthropic API key for diet plans and video AI feedback:
+Edit `backend/.env` and set your [Groq](https://console.groq.com/) API key for diet plans and video AI feedback:
 
 ```
-ANTHROPIC_API_KEY=your_key_here
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
 ```
+
+Copy from `backend/.env.example` if needed. Do not commit `.env` to GitHub.
 
 ## Features
 

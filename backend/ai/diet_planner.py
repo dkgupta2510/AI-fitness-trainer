@@ -1,21 +1,8 @@
-from anthropic import Anthropic
 import json
-import os
+from .llm_client import chat
 
 
 class DietPlanner:
-    def __init__(self):
-        self._client = None
-
-    @property
-    def client(self):
-        if self._client is None:
-            api_key = os.getenv('ANTHROPIC_API_KEY')
-            if not api_key or api_key == 'your_anthropic_api_key_here':
-                raise ValueError('Set ANTHROPIC_API_KEY in backend/.env')
-            self._client = Anthropic(api_key=api_key)
-        return self._client
-
     def generate_diet_plan(self, user_data):
         diet_type = user_data.get('diet_type', 'veg')
         goal = user_data.get('goal', 'maintenance')
@@ -89,13 +76,7 @@ For {diet_type} diet, ensure all foods strictly follow:
 - Nonveg: All foods allowed"""
 
         try:
-            message = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=2000,
-                messages=[{"role": "user", "content": prompt}]
-            )
-
-            response_text = message.content[0].text.strip()
+            response_text = chat(prompt, max_tokens=2000).strip()
 
             if response_text.startswith('```'):
                 response_text = response_text.split('```')[1]
