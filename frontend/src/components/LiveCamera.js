@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import io from 'socket.io-client';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = 'https://ai-fitness-trainer-tc8x.onrender.com/';
 const FRAME_INTERVAL_MS = 120;
 
 const INITIAL_STATS = {
